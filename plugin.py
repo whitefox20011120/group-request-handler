@@ -97,11 +97,23 @@ class NoticeSection(PluginConfigBase):
     )
 
 
+class WelcomeSection(PluginConfigBase):
+    __ui_label__: ClassVar[str] = "欢迎语"
+    __ui_order__: ClassVar[int] = 4
+
+    message: str = Field(
+        default="欢迎新成员加入本群！",
+        description="同意入群后，在群内 @新成员 并发送此欢迎语。留空则不发送。",
+        json_schema_extra={"label": "欢迎语", "order": 0, "placeholder": "请输入欢迎语"},
+    )
+
+
 class GroupRequestHandlerConfig(PluginConfigBase):
     plugin: PluginSection = Field(default_factory=PluginSection)
     admin: AdminSection = Field(default_factory=AdminSection)
     webhook: WebhookSection = Field(default_factory=WebhookSection)
     notice: NoticeSection = Field(default_factory=NoticeSection)
+    welcome: WelcomeSection = Field(default_factory=WelcomeSection)
 
 
 # ---------------- 插件主体 ----------------
@@ -349,7 +361,10 @@ class GroupRequestHandlerPlugin(MaiBotPlugin):
         self._save_state()
 
         if approve:
-            await self._reply(stream_id, f"已同意 QQ {target_qq} 加入群 {group_id}。")
+            await asyncio.sleep(1.5)
+            welcome = (self.config.welcome.message or "").strip()
+            if welcome:
+                await self._send_welcome(group_id, target_qq, welcome)
         else:
             await self._reply(stream_id, f"已拒绝 QQ {target_qq} 加入群 {group_id}。")
         return True, None, True
@@ -404,6 +419,20 @@ class GroupRequestHandlerPlugin(MaiBotPlugin):
             await self.ctx.send.text(text, stream_id)
         except Exception as exc:
             self.ctx.logger.warning(f"回复消息失败: {exc}")
+
+    async def _send_welcome(self, group_id: str, user_id: str, text: str) -> None:
+        message: List[Dict[str, Any]] = [
+            {"type": "at", "data": {"qq": str(user_id)}},
+            {"type": "text", "data": {"text": f" {text}"}},
+        ]
+        await self._call_napcat(
+            "send_group_msg",
+            {
+                "group_id": int(group_id) if str(group_id).isdigit() else group_id,
+                "message": message,
+            },
+            raise_on_error=False,
+        )
 
     async def _send_group_notice(self, group_id: str, applicant_qq: str, text: str) -> None:
         if not group_id or not text:
