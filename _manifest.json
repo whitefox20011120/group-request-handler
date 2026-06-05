@@ -1,0 +1,42 @@
+{
+  "manifest_version": 2,
+  "version": "1.0.0",
+  "name": "加群申请处理",
+  "description": "监听加群申请，向管理员推送申请人资料到指定群聊，群管理员可通过命令一键通过入群申请",
+  "author": {
+    "name": "白狐",
+    "url": "https://github.com/whitefox20011120"
+  },
+  "license": "MIT",
+  "urls": {
+    "repository": "https://github.com/whitefox20011120/group-request-handler"
+  },
+  "host_application": {
+    "min_version": "1.0.0",
+    "max_version": "1.99.99"
+  },
+  "sdk": {
+    "min_version": "2.0.0",
+    "max_version": "2.99.99"
+  },
+  "dependencies": [
+    {
+      "type": "python_package",
+      "name": "aiohttp",
+      "version_spec": ">=3.9.0"
+    }
+  ],
+  "capabilities": [
+    "send.text",
+    "config.get",
+    "api.call"
+  ],
+  "i18n": {
+    "default_locale": "zh-CN",
+    "locales_path": "_locales",
+    "supported_locales": [
+      "zh-CN"
+    ]
+  },
+  "id": "whitefox.group-request-handler"
+}
