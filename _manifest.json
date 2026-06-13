@@ -39,6 +39,7 @@
     ]
   },
   "id": "whitefox.group-request-handler",
+  "plugin_type": "management",
   "display": {
     "icon": {
       "type": "local",
