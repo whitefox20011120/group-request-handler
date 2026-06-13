@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "1.1.0",
+  "version": "1.1.1",
   "name": "加群申请处理",
   "description": "监听加群申请，向管理员推送申请人资料到指定群聊，群管理员可通过命令一键通过入群申请",
   "author": {
