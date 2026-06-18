@@ -119,6 +119,22 @@ class RecallSection(PluginConfigBase):
     )
 
 
+class BlacklistSection(PluginConfigBase):
+    __ui_label__: ClassVar[str] = "黑名单"
+    __ui_order__: ClassVar[int] = 6
+
+    enabled: bool = Field(
+        default=True,
+        description="启用后，黑名单内的 QQ 号申请加群将被自动拒绝，不发送通知，仅在控制台输出日志。",
+        json_schema_extra={"label": "启用黑名单", "order": 0},
+    )
+    qqs: List[str] = Field(
+        default_factory=list,
+        description="黑名单 QQ 号列表；命中后直接拒绝加群申请。",
+        json_schema_extra={"label": "黑名单 QQ", "order": 1, "placeholder": "请输入 QQ 号"},
+    )
+
+
 class GroupRequestHandlerConfig(PluginConfigBase):
     plugin: PluginSection = Field(default_factory=PluginSection)
     admin: AdminSection = Field(default_factory=AdminSection)
@@ -126,6 +142,7 @@ class GroupRequestHandlerConfig(PluginConfigBase):
     notice: NoticeSection = Field(default_factory=NoticeSection)
     welcome: WelcomeSection = Field(default_factory=WelcomeSection)
     recall: RecallSection = Field(default_factory=RecallSection)
+    blacklist: BlacklistSection = Field(default_factory=BlacklistSection)
 
 
 # ---------------- 插件主体 ----------------
@@ -247,6 +264,22 @@ class GroupRequestHandlerPlugin(MaiBotPlugin):
             flag = str(payload.get("flag") or "").strip()
             comment = str(payload.get("comment") or "").strip()
             if not user_id or not flag or not group_id:
+                return
+
+            if self._is_blacklisted(user_id):
+                self.ctx.logger.info(
+                    f"[黑名单] 自动拒绝加群申请: user_id={user_id} group_id={group_id} comment={comment!r}"
+                )
+                try:
+                    await self._call_napcat(
+                        "set_group_add_request",
+                        {"flag": flag, "sub_type": "add", "approve": False},
+                        raise_on_error=True,
+                    )
+                except Exception as exc:
+                    self.ctx.logger.warning(
+                        f"[黑名单] 拒绝加群申请失败 user_id={user_id} group_id={group_id}: {exc}"
+                    )
                 return
 
             admin_qqs = self._normalized_admin_qqs()
@@ -426,6 +459,15 @@ class GroupRequestHandlerPlugin(MaiBotPlugin):
 
     def _normalized_admin_qqs(self) -> List[str]:
         return [str(qq).strip() for qq in self.config.admin.admin_qqs if str(qq).strip()]
+
+    def _is_blacklisted(self, user_id: str) -> bool:
+        blacklist_cfg = self.config.blacklist
+        if not blacklist_cfg.enabled:
+            return False
+        target = str(user_id).strip()
+        if not target:
+            return False
+        return target in {str(qq).strip() for qq in blacklist_cfg.qqs if str(qq).strip()}
 
     @staticmethod
     def _extract_sender_qq(kwargs: Dict[str, Any]) -> Optional[str]:
